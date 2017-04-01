@@ -21,9 +21,20 @@
 #include <vector>
 #include <cstring>
 
-#include "lglogger.hpp"
-#include "lgwindow.hpp"
-#include "lggfxengine.hpp"
+#include "gravitylogger.hpp"
+#include "gravityevent.hpp"
+
+#ifdef VK_USE_PLATFORM_XCB_KHR
+    #include "gravityxcbwindow.hpp"
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    #include "gravitywaylandwindow.hpp"
+#elif defined(VK_USE_PLATFORM_WIN32_KHR)
+    #include "gravitywin32window.hpp"
+#else
+    #include "gravitywindow.hpp"
+#endif
+#include "gravityclock.hpp"
+#include "gravityvulkanengine.hpp"
 
 #define APPLICATION_NAME "Lunar Gravity Demo"
 #define APPLICATION_VERSION 1
@@ -32,16 +43,19 @@ int main(int argc, char *argv[]) {
     bool fullscreen = false;
     bool validate = false;
     bool enable_popups = true;
-    LgLogLevel log_level = LG_LOG_ERROR;
+    GravityLogLevel log_level = GRAVITY_LOG_ERROR;
     uint32_t win_width = 320;
     uint32_t win_height = 240;
+    uint32_t num_backbuffers = 2;
     bool print_usage = false;
     for (int32_t i = 1; i < argc; i++) {
         if (argv[i][0] != '-' || argv[i][1] != '-') {
             print_usage = true;
             break;
         }
-        if (!strcmp(&argv[i][2], "validate")) {
+        if (!strcmp(&argv[i][2], "help")) {
+            print_usage = true;
+        } else if (!strcmp(&argv[i][2], "validate")) {
             validate = true;
         } else if (!strcmp(&argv[i][2], "fullscreen")) {
             fullscreen = true;
@@ -57,16 +71,22 @@ int main(int argc, char *argv[]) {
             } else {
                 print_usage = true;
             }
+        } else if (!strcmp(&argv[i][2], "backbuffers")) {
+            if (argc >= i + 1) {
+                num_backbuffers = atoi(argv[++i]);
+            } else {
+                print_usage = true;
+            }
         } else if (!strcmp(&argv[i][2], "nopopups")) {
             enable_popups = false;
         } else if (!strcmp(&argv[i][2], "loglevel")) {
             if (argc >= i + 1) {
                 if (!strcmp(argv[++i], "warn")) {
-                    log_level = LG_LOG_WARN_ERROR;
+                    log_level = GRAVITY_LOG_WARN_ERROR;
                 } else if (!strcmp(argv[i], "info")) {
-                    log_level = LG_LOG_INFO_WARN_ERROR;
+                    log_level = GRAVITY_LOG_INFO_WARN_ERROR;
                 } else if (!strcmp(argv[i], "all")) {
-                    log_level = LG_LOG_ALL;
+                    log_level = GRAVITY_LOG_ALL;
                 } else {
                     print_usage = true;
                 }
@@ -79,19 +99,42 @@ int main(int argc, char *argv[]) {
     if (print_usage) {
         std::cout << "Usage: " << argv[0] << " [OPTIONS]" << std::endl
                   << "\t[OPTIONS]" << std::endl
+                  << "\t\t--help\t\t\t\tPrint out this usage information" << std::endl
                   << "\t\t--fullscreen\t\t\tEnable fullscreen render" << std::endl
                   << "\t\t--validate\t\t\tEnable validation" << std::endl
                   << "\t\t--loglevel [warn, info, all]\tEnable logging of provided level and above." << std::endl
                   << "\t\t--nopopups\t\t\tDisable warning/error pop-ups on Windows" << std::endl
                   << "\t\t--height val\t\t\tSet window height to val" << std::endl
-                  << "\t\t--width val\t\t\tSet window width to val" << std::endl;
+                  << "\t\t--width val\t\t\tSet window width to val" << std::endl
+                  << "\t\t--backbuffers val\t\tNumber of backbuffers to use (2=double buffering, 3=triple, etc)" << std::endl;
         return -1;
     }
 
-    LgLogger &logger = LgLogger::getInstance();
+    GravityLogger &logger = GravityLogger::getInstance();
     logger.SetLogLevel(log_level);
     logger.TogglePopups(enable_popups);
-    LgWindow window(win_width, win_height, fullscreen);
-    LgGraphicsEngine engine(APPLICATION_NAME, APPLICATION_VERSION, validate, window);
+
+    GravityEventList &event_list = GravityEventList::getInstance();
+    event_list.Alloc(32);
+
+#ifdef VK_USE_PLATFORM_XCB_KHR
+    GravityXcbWindow gravity_window(APPLICATION_NAME, win_width, win_height, fullscreen);
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    GravityWaylandWindow gravity_window(APPLICATION_NAME, win_width, win_height, fullscreen);
+#elif defined(VK_USE_PLATFORM_WIN32_KHR)
+    GravityWin32Window gravity_window(APPLICATION_NAME, win_width, win_height, fullscreen);
+#else
+#error "Unsupported Window format!"
+#endif
+
+    GravityClock gravity_clock;
+    GravityVulkanEngine engine(APPLICATION_NAME, APPLICATION_VERSION, validate, &gravity_clock, &gravity_window, num_backbuffers);
+
+    if (!engine.SetupInitalGraphicsDevice()) {
+        return -1;
+    }
+
+    engine.Loop();
+
     return 0;
 }
