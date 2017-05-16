@@ -27,6 +27,12 @@ struct VulkanString;
 
 #define MAX_NUM_BACK_BUFFERS 4
 
+struct GraivtySwapchainImage {
+    VkImage image;
+    VkImageView image_view;
+    VkFence fence;
+};
+
 struct GravitySwapchainSurface {
     VkFormat format;
     VkColorSpaceKHR color_space;
@@ -35,6 +41,8 @@ struct GravitySwapchainSurface {
     VkSemaphore draw_complete_semaphores[MAX_NUM_BACK_BUFFERS];
     VkSemaphore image_ownership_semaphores[MAX_NUM_BACK_BUFFERS];
     VkFence fences[MAX_NUM_BACK_BUFFERS];
+    VkSwapchainKHR vk_swapchain;
+    std::vector<GraivtySwapchainImage> swapchain_images;
 };
 
 struct GravityCmdBuffer {

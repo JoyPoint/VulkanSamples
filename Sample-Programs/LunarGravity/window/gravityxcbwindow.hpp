@@ -45,7 +45,7 @@ class GravityXcbWindow : public GravityWindow {
         xcb_connection_t* Connection() { return m_connection; }
         xcb_intern_atom_reply_t* DeleteWindowAtom() { return m_atom_wm_delete_window; }
 
-        virtual void Trigger_Quit();
+        virtual void TriggerQuit();
         bool EndThread() { return m_end_thread; }
 
     protected:

@@ -57,7 +57,7 @@ GravityXcbWindow::~GravityXcbWindow() {
     CloseGfxWindow();
 }
 
-void GravityXcbWindow::Trigger_Quit() {
+void GravityXcbWindow::TriggerQuit() {
     // TODO: Brainpain - Send message to application.
     m_end_thread = true;
 }
@@ -94,7 +94,7 @@ static void handle_xcb_event(GravityXcbWindow *window, const xcb_generic_event_t
                 logger.LogError("GravityXcbWindow::handle_xcb_event No space in event "
                                 "list to add key press");
             }
-            window->Trigger_Quit();
+            window->TriggerQuit();
         }
         break;
 
@@ -115,7 +115,7 @@ static void handle_xcb_event(GravityXcbWindow *window, const xcb_generic_event_t
             break;
         case 0x41: // space bar
             event.data.key = KEYNAME_SPACE;
-            window->Toggle_Pause();
+            window->TogglePause();
             break;
         default:
             {

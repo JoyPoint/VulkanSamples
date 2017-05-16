@@ -142,13 +142,13 @@ bool GravityGraphicsEngine::ProcessEvents(void) {
                 break;
             case GravityEvent::GRAVITY_EVENT_WINDOW_CLOSE:
                 m_quit = true;
-                m_window->Trigger_Quit();            
+                m_window->TriggerQuit();
                 break;
             case GravityEvent::GRAVITY_EVENT_KEY_PRESS:
                 switch (cur_event.data.key) {
                     case KEYNAME_ESCAPE:
                         m_quit = true;
-                        m_window->Trigger_Quit();            
+                        m_window->TriggerQuit();
                         break;
                     case KEYNAME_SPACE:
                         m_paused = !m_paused;

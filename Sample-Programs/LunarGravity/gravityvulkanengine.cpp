@@ -737,15 +737,10 @@ bool GravityVulkanEngine::SetupInitalGraphicsDevice() {
     }
     m_primary_cmd_buffers[0].recording = true;
 
-logger.LogWarning("Created cmd buffer!!!");
-
     if (!SetupSwapchain(logger)) {
         // Error message printed in function, so just exit
         return false;
     }
-
-logger.LogWarning("Created swapchain!!!");
-
 
     return true;
 }
@@ -753,6 +748,9 @@ logger.LogWarning("Created swapchain!!!");
 bool GravityVulkanEngine::SetupSwapchain(GravityLogger &logger) {
     uint32_t count = 0;
     std::vector<VkSurfaceFormatKHR> surface_formats;
+    VkSurfaceCapabilitiesKHR surface_caps = {};
+    std::vector<VkPresentModeKHR> present_modes;
+    VkExtent2D swapchain_extent = {};
     VkResult vk_result = VK_SUCCESS;
 
     // Get the list of VkFormat's that are supported:
@@ -791,7 +789,7 @@ bool GravityVulkanEngine::SetupSwapchain(GravityLogger &logger) {
     // If the format list includes just one entry of VK_FORMAT_UNDEFINED,
     // the surface has no preferred format.  Otherwise, at least one
     if (count == 1 && surface_formats[0].format == VK_FORMAT_UNDEFINED) {
-        logger.LogInfo("Forcing surfacd to BGRA8 format");
+        logger.LogInfo("Forcing surface to BGRA8 format");
         m_swapchain_surface.color_space = surface_formats[0].colorSpace;
     } else {
         for (auto surf_fmt = surface_formats.begin(); surf_fmt != surface_formats.end(); ++surf_fmt) {
@@ -799,7 +797,7 @@ bool GravityVulkanEngine::SetupSwapchain(GravityLogger &logger) {
                 case VK_FORMAT_B8G8R8A8_SRGB:
                     m_swapchain_surface.format = VK_FORMAT_B8G8R8A8_SRGB;  
                     m_swapchain_surface.color_space = surf_fmt->colorSpace;
-                    logger.LogInfo("Forcing surfacd to BGRA8 SRGB format");
+                    logger.LogInfo("Forcing surface to BGRA8 SRGB format");
                     break;
                 case VK_FORMAT_B8G8R8A8_UNORM:
                     m_swapchain_surface.color_space = surf_fmt->colorSpace;
@@ -846,7 +844,7 @@ bool GravityVulkanEngine::SetupSwapchain(GravityLogger &logger) {
         vk_result = vkCreateSemaphore(m_vk_device, &semaphbore_create_info, nullptr,
                                       &m_swapchain_surface.draw_complete_semaphores[i]);
         if (VK_SUCCESS != vk_result) {
-            std::string error_msg = "GravityVulkanEngine::GravityVulkanEngine failed vkCreateSemaphore for buffer ";
+            std::string error_msg = "GravityVulkanEngine::SetupSwapchain failed vkCreateSemaphore for buffer ";
             error_msg += std::to_string(i);
             error_msg += " draw complete semaphore";
             logger.LogError(error_msg);
@@ -857,7 +855,7 @@ bool GravityVulkanEngine::SetupSwapchain(GravityLogger &logger) {
             vk_result = vkCreateSemaphore(m_vk_device, &semaphbore_create_info, nullptr,
                                           &m_swapchain_surface.image_ownership_semaphores[i]);
             if (VK_SUCCESS != vk_result) {
-                std::string error_msg = "GravityVulkanEngine::GravityVulkanEngine failed vkCreateSemaphore for buffer ";
+                std::string error_msg = "GravityVulkanEngine::SetupSwapchain failed vkCreateSemaphore for buffer ";
                 error_msg += std::to_string(i);
                 error_msg += " separate present queue image ownership semaphore";
                 logger.LogError(error_msg);
@@ -867,17 +865,16 @@ bool GravityVulkanEngine::SetupSwapchain(GravityLogger &logger) {
     }
 
     // Check the surface capabilities and formats
-    VkSurfaceCapabilitiesKHR surface_caps = {};
     vk_result = m_vk_inst_dispatch_table.GetPhysicalDeviceSurfaceCapabilitiesKHR(m_vk_phys_dev,
                                                                                  m_window->GetSurface(),
                                                                                  &surface_caps);
     if (VK_SUCCESS != vk_result) {
-        logger.LogError("GravityVulkanEngine::GravityVulkanEngine failed call to "
+        logger.LogError("GravityVulkanEngine::SetupSwapchain failed call to "
                         "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
         return false;
     } else if (m_num_backbuffers < surface_caps.minImageCount ||
         (surface_caps.maxImageCount > 0 && m_num_backbuffers > surface_caps.maxImageCount)) {
-        std::string error_msg = "GravityVulkanEngine::GravityVulkanEngine surface can't support ";
+        std::string error_msg = "GravityVulkanEngine::SetupSwapchain surface can't support ";
         error_msg += std::to_string(m_num_backbuffers);
         if (surface_caps.maxImageCount > 0) {
             error_msg += " backbuffers, number should be between ";
@@ -892,211 +889,190 @@ bool GravityVulkanEngine::SetupSwapchain(GravityLogger &logger) {
         return false;
     }
 
-#if 0 // Brainpain
-    uint32_t presentModeCount;
-    err = demo->fpGetPhysicalDeviceSurfacePresentModesKHR(
-        demo->gpu, demo->surface, &presentModeCount, NULL);
-    assert(!err);
-    VkPresentModeKHR *presentModes =
-        (VkPresentModeKHR *)malloc(presentModeCount * sizeof(VkPresentModeKHR));
-    assert(presentModes);
-    err = demo->fpGetPhysicalDeviceSurfacePresentModesKHR(
-        demo->gpu, demo->surface, &presentModeCount, presentModes);
-    assert(!err);
+    vk_result = m_vk_inst_dispatch_table.GetPhysicalDeviceSurfacePresentModesKHR(m_vk_phys_dev,
+                                                                                 m_window->GetSurface(),
+                                                                                 &count,
+                                                                                NULL);
+    if (VK_SUCCESS != vk_result) {
+        logger.LogError("GravityVulkanEngine::SetupSwapchain failed call to "
+                        "GetPhysicalDeviceSurfacePresentModesKHR for count");
+        return false;
+    }
+    present_modes.resize(count);
+    vk_result = m_vk_inst_dispatch_table.GetPhysicalDeviceSurfacePresentModesKHR(m_vk_phys_dev,
+                                                                                 m_window->GetSurface(),
+                                                                                 &count,
+                                                                                present_modes.data());
+    if (VK_SUCCESS != vk_result) {
+        logger.LogError("GravityVulkanEngine::SetupSwapchain failed call to "
+                        "GetPhysicalDeviceSurfacePresentModesKHR for data");
+        return false;
+    }
 
-    VkExtent2D swapchainExtent;
-    // width and height are either both 0xFFFFFFFF, or both not 0xFFFFFFFF.
-    if (surfCapabilities.currentExtent.width == 0xFFFFFFFF) {
+    swapchain_extent.width = m_window->GetWidth();
+    swapchain_extent.height = m_window->GetHeight();
+
+    // Width and height are either both 0xFFFFFFFF, or both not 0xFFFFFFFF.
+    if (surface_caps.currentExtent.width == 0xFFFFFFFF) {
         // If the surface size is undefined, the size is set to the size
         // of the images requested, which must fit within the minimum and
         // maximum values.
-        swapchainExtent.width = demo->width;
-        swapchainExtent.height = demo->height;
 
-        if (swapchainExtent.width < surfCapabilities.minImageExtent.width) {
-            swapchainExtent.width = surfCapabilities.minImageExtent.width;
-        } else if (swapchainExtent.width > surfCapabilities.maxImageExtent.width) {
-            swapchainExtent.width = surfCapabilities.maxImageExtent.width;
+        if (swapchain_extent.width < surface_caps.minImageExtent.width) {
+            swapchain_extent.width = surface_caps.minImageExtent.width;
+        } else if (swapchain_extent.width > surface_caps.maxImageExtent.width) {
+            swapchain_extent.width = surface_caps.maxImageExtent.width;
         }
         
-        if (swapchainExtent.height < surfCapabilities.minImageExtent.height) {
-            swapchainExtent.height = surfCapabilities.minImageExtent.height;
-        } else if (swapchainExtent.height > surfCapabilities.maxImageExtent.height) {
-            swapchainExtent.height = surfCapabilities.maxImageExtent.height;
+        if (swapchain_extent.height < surface_caps.minImageExtent.height) {
+            swapchain_extent.height = surface_caps.minImageExtent.height;
+        } else if (swapchain_extent.height > surface_caps.maxImageExtent.height) {
+            swapchain_extent.height = surface_caps.maxImageExtent.height;
         }
-    } else {
-        // If the surface size is defined, the swap chain size must match
-        swapchainExtent = surfCapabilities.currentExtent;
-        demo->width = surfCapabilities.currentExtent.width;
-        demo->height = surfCapabilities.currentExtent.height;
+    } else if (surface_caps.currentExtent.width < m_window->GetWidth() ||
+               surface_caps.currentExtent.height < m_window->GetHeight()) {
+
+        logger.LogError("GravityVulkanEngine::SetupSwapchain surface doesn't support"
+                        " swpachains of the requested size");
+        return false;
     }
 
-    // The FIFO present mode is guaranteed by the spec to be supported
-    // and to have no tearing.  It's a great default present mode to use.
-    VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-    //  There are times when you may wish to use another present mode.  The
-    //  following code shows how to select them, and the comments provide some
-    //  reasons you may wish to use them.
-    //
-    // It should be noted that Vulkan 1.0 doesn't provide a method for
-    // synchronizing rendering with the presentation engine's display.  There
-    // is a method provided for throttling rendering with the display, but
-    // there are some presentation engines for which this method will not work.
-    // If an application doesn't throttle its rendering, and if it renders much
-    // faster than the refresh rate of the display, this can waste power on
-    // mobile devices.  That is because power is being spent rendering images
-    // that may never be seen.
-
-    // VK_PRESENT_MODE_IMMEDIATE_KHR is for applications that don't care about
-    // tearing, or have some way of synchronizing their rendering with the
-    // display.
-    // VK_PRESENT_MODE_MAILBOX_KHR may be useful for applications that
-    // generally render a new presentable image every refresh cycle, but are
-    // occasionally early.  In this case, the application wants the new image
-    // to be displayed instead of the previously-queued-for-presentation image
-    // that has not yet been displayed.
-    // VK_PRESENT_MODE_FIFO_RELAXED_KHR is for applications that generally
-    // render a new presentable image every refresh cycle, but are occasionally
-    // late.  In this case (perhaps because of stuttering/latency concerns),
-    // the application wants the late image to be immediately displayed, even
-    // though that may mean some tearing.
-
-    if (demo->presentMode !=  swapchainPresentMode) {
-
-        for (size_t i = 0; i < presentModeCount; ++i) {
-            if (presentModes[i] == demo->presentMode) {
-                swapchainPresentMode = demo->presentMode;
-                break;
-            }
+    VkPresentModeKHR desired_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    for (uint32_t pm = 0; pm < present_modes.size(); ++pm) {
+        if (present_modes[pm] == desired_present_mode) {
+            logger.LogInfo("Found present desired mode");
+            break;
         }
-    }
-    if (swapchainPresentMode != demo->presentMode) {
-        ERR_EXIT("Present mode specified is not supported\n", "Present mode unsupported");
     }
 
     // Determine the number of VkImages to use in the swap chain.
     // Application desires to acquire 3 images at a time for triple
     // buffering
-    uint32_t desiredNumOfSwapchainImages = 3;
-    if (desiredNumOfSwapchainImages < surfCapabilities.minImageCount) {
-        desiredNumOfSwapchainImages = surfCapabilities.minImageCount;
+    if (m_num_backbuffers < surface_caps.minImageCount) {
+        m_num_backbuffers = surface_caps.minImageCount;
     }
     // If maxImageCount is 0, we can ask for as many images as we want;
     // otherwise we're limited to maxImageCount
-    if ((surfCapabilities.maxImageCount > 0) &&
-        (desiredNumOfSwapchainImages > surfCapabilities.maxImageCount)) {
+    if (surface_caps.maxImageCount > 0 &&
+        (m_num_backbuffers > surface_caps.maxImageCount)) {
         // Application must settle for fewer images than desired:
-        desiredNumOfSwapchainImages = surfCapabilities.maxImageCount;
+        m_num_backbuffers = surface_caps.maxImageCount;
     }
 
-    VkSurfaceTransformFlagsKHR preTransform;
-    if (surfCapabilities.supportedTransforms &
-        VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) {
-        preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    VkSurfaceTransformFlagBitsKHR surface_transform = {};
+    if (surface_caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) {
+        surface_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     } else {
-        preTransform = surfCapabilities.currentTransform;
+        surface_transform = surface_caps.currentTransform;
     }
 
-    VkSwapchainCreateInfoKHR swapchain_ci = {
-        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .pNext = NULL,
-        .surface = demo->surface,
-        .minImageCount = desiredNumOfSwapchainImages,
-        .imageFormat = demo->format,
-        .imageColorSpace = demo->color_space,
-        .imageExtent =
-            {
-             .width = swapchainExtent.width, .height = swapchainExtent.height,
-            },
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .preTransform = preTransform,
-        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .imageArrayLayers = 1,
-        .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices = NULL,
-        .presentMode = swapchainPresentMode,
-        .oldSwapchain = oldSwapchain,
-        .clipped = true,
-    };
-    uint32_t i;
-    err = demo->fpCreateSwapchainKHR(demo->device, &swapchain_ci, NULL,
-                                     &demo->swapchain);
-    assert(!err);
+    VkSwapchainCreateInfoKHR swapchain_create_info = {};
+    swapchain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swapchain_create_info.pNext = nullptr;
+    swapchain_create_info.surface = m_window->GetSurface();
+    swapchain_create_info.minImageCount = m_num_backbuffers;
+    swapchain_create_info.imageFormat = m_swapchain_surface.format;
+    swapchain_create_info.imageColorSpace = m_swapchain_surface.color_space;
+    swapchain_create_info.imageExtent.width = swapchain_extent.width;
+    swapchain_create_info.imageExtent.height = swapchain_extent.height;
+    swapchain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    swapchain_create_info.preTransform = surface_transform;
+    swapchain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchain_create_info.imageArrayLayers = 1;
+    swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    swapchain_create_info.queueFamilyIndexCount = 0;
+    swapchain_create_info.pQueueFamilyIndices = nullptr;
+    swapchain_create_info.presentMode = desired_present_mode;
+    swapchain_create_info.oldSwapchain = VK_NULL_HANDLE;
+    swapchain_create_info.clipped = true;
 
-    // If we just re-created an existing swapchain, we should destroy the old
-    // swapchain at this point.
-    // Note: destroying the swapchain also cleans up all its associated
-    // presentable images once the platform is done with them.
-    if (oldSwapchain != VK_NULL_HANDLE) {
-        demo->fpDestroySwapchainKHR(demo->device, oldSwapchain, NULL);
+    vk_result = vkCreateSwapchainKHR(m_vk_device, &swapchain_create_info, nullptr,
+                                     &m_swapchain_surface.vk_swapchain);
+    if (VK_SUCCESS != vk_result) {
+        logger.LogError("GravityVulkanEngine::SetupSwapchain failed call to CreateSwapchainKHR");
+        return false;
     }
 
-    err = demo->fpGetSwapchainImagesKHR(demo->device, demo->swapchain,
-                                        &demo->swapchainImageCount, NULL);
-    assert(!err);
-
-    VkImage *swapchainImages =
-        (VkImage *)malloc(demo->swapchainImageCount * sizeof(VkImage));
-    assert(swapchainImages);
-    err = demo->fpGetSwapchainImagesKHR(demo->device, demo->swapchain,
-                                        &demo->swapchainImageCount,
-                                        swapchainImages);
-    assert(!err);
-
-    demo->swapchain_image_resources = (SwapchainImageResources *)malloc(sizeof(SwapchainImageResources) *
-                                               demo->swapchainImageCount);
-    assert(demo->swapchain_image_resources);
-
-    VkFenceCreateInfo fence_ci = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT
-    };
-
-    for (i = 0; i < demo->swapchainImageCount; i++) {
-        VkImageViewCreateInfo color_image_view = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext = NULL,
-            .format = demo->format,
-            .components =
-                {
-                 .r = VK_COMPONENT_SWIZZLE_R,
-                 .g = VK_COMPONENT_SWIZZLE_G,
-                 .b = VK_COMPONENT_SWIZZLE_B,
-                 .a = VK_COMPONENT_SWIZZLE_A,
-                },
-            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                 .baseMipLevel = 0,
-                                 .levelCount = 1,
-                                 .baseArrayLayer = 0,
-                                 .layerCount = 1},
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .flags = 0,
-        };
-
-        demo->swapchain_image_resources[i].image = swapchainImages[i];
-
-        color_image_view.image = demo->swapchain_image_resources[i].image;
-
-        err = vkCreateImageView(demo->device, &color_image_view, NULL,
-                                &demo->swapchain_image_resources[i].view);
-        assert(!err);
-
-        err = vkCreateFence(demo->device, &fence_ci, NULL, &demo->swapchain_image_resources[i].fence);
-        assert(!err);
+    std::vector<VkImage> swpchn_images;
+    vk_result = vkGetSwapchainImagesKHR(m_vk_device, m_swapchain_surface.vk_swapchain,
+                                        &count, nullptr);
+    if (VK_SUCCESS != vk_result || count == 0) {
+        logger.LogError("GravityVulkanEngine::SetupSwapchain failed call to GetSwapchainImagesKHR "
+                        "querying number of swapchain images");
+        return false;
     }
 
-    if (NULL != presentModes) {
-        free(presentModes);
+    swpchn_images.resize(count);
+    vk_result = vkGetSwapchainImagesKHR(m_vk_device, m_swapchain_surface.vk_swapchain,
+                                        &count, swpchn_images.data());
+    if (VK_SUCCESS != vk_result || count == 0) {
+        logger.LogError("GravityVulkanEngine::SetupSwapchain failed call to GetSwapchainImagesKHR "
+                        "querying of swapchain images");
+        return false;
     }
-#endif 
+
+    m_swapchain_surface.swapchain_images.resize(count);
+
+    // Create a fence
+    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_create_info.pNext = nullptr;
+    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (uint32_t i = 0; i < count; i++) {
+        VkImageViewCreateInfo image_view_create_info = {};
+        image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        image_view_create_info.pNext = nullptr;
+        image_view_create_info.flags = 0;
+        image_view_create_info.format =  m_swapchain_surface.format;
+        image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_R;
+        image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_G;
+        image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_B;
+        image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_A;
+        image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_view_create_info.subresourceRange.baseMipLevel = 0;
+        image_view_create_info.subresourceRange.levelCount = 1;
+        image_view_create_info.subresourceRange.baseArrayLayer = 0;
+        image_view_create_info.subresourceRange.layerCount = 1;
+        image_view_create_info.image = swpchn_images[i];
+
+        vk_result = vkCreateImageView(m_vk_device, &image_view_create_info, nullptr,
+                                      &m_swapchain_surface.swapchain_images[i].image_view);
+        if (VK_SUCCESS != vk_result) {
+            std::string message = "GravityVulkanEngine::SetupSwapchain failed ";
+            message += std::to_string(i);
+            message += " call to vkCreateImageView";
+            logger.LogError(message);
+            return false;
+        }
+
+        vk_result = vkCreateFence(m_vk_device, &fence_create_info, nullptr,
+                                  &m_swapchain_surface.swapchain_images[i].fence);
+        if (VK_SUCCESS != vk_result) {
+            std::string message = "GravityVulkanEngine::SetupSwapchain failed ";
+            message += std::to_string(i);
+            message += " call to vkCreateFence";
+            logger.LogError(message);
+            return false;
+        }
+
+        m_swapchain_surface.swapchain_images[i].image = swpchn_images[i];
+    }
+
     return true;
 }
 
 void GravityVulkanEngine::CleanupSwapchain() {
-    for (uint32_t i = 0; i < m_num_backbuffers; i++) {
+    uint32_t i;
+
+    vkDestroySwapchainKHR(m_vk_device, m_swapchain_surface.vk_swapchain, nullptr);
+    for (i = 0; i < m_swapchain_surface.swapchain_images.size(); i++) {
+        vkDestroyImageView(m_vk_device, m_swapchain_surface.swapchain_images[i].image_view,
+                           nullptr);
+        vkDestroyFence(m_vk_device, m_swapchain_surface.swapchain_images[i].fence, nullptr);
+    }
+
+    for (i = 0; i < m_num_backbuffers; i++) {
         vkDestroyFence(m_vk_device, m_swapchain_surface.fences[i], nullptr);
         vkDestroySemaphore(m_vk_device, m_swapchain_surface.image_acquired_semaphores[i], nullptr);
         vkDestroySemaphore(m_vk_device, m_swapchain_surface.draw_complete_semaphores[i], nullptr);

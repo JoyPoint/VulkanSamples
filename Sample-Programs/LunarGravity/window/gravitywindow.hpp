@@ -40,15 +40,18 @@ class GravityWindow {
         virtual bool CreateGfxWindow(VkInstance &instance) = 0;
         virtual bool CloseGfxWindow() { return false; }
 
-        virtual void Trigger_Quit() = 0;
+        virtual void TriggerQuit() = 0;
 
-        void Toggle_Pause() { m_paused = !m_paused; }
+        void TogglePause() { m_paused = !m_paused; }
         bool IsPaused() { return m_paused; }
 
         // Make the destructor public
         virtual ~GravityWindow();
 
         inline VkSurfaceKHR GetSurface() { return m_vk_surface; }
+
+        uint32_t GetWidth() { return m_width; }
+        uint32_t GetHeight() { return m_height; }
 
     protected:
         uint32_t m_width;
