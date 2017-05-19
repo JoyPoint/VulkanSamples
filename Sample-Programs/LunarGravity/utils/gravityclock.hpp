@@ -18,59 +18,18 @@
 
 #pragma once
 
-#include <time.h>
-
 class GravityClock {
 public:
     GravityClock() {
         m_paused = true;
     }
 
-private:
-    bool m_paused;
-    double m_last_comp_time;
-    double m_last_game_time;
-
-    double GrabCurrentTime(void) {
-        timespec current;
-        clock_gettime(CLOCK_MONOTONIC, &current);
-        return static_cast<double>(current.tv_sec) +
-                    (static_cast<double>(current.tv_nsec) * 0.000001);
-    }
-
-public:
-
-    void Start() {
-        timespec current;
-        clock_gettime(CLOCK_MONOTONIC, &current);
-        m_last_comp_time = GrabCurrentTime();
-    }
-
-    void StartGameTime() {
-        timespec current;
-        clock_gettime(CLOCK_MONOTONIC, &current);
-        m_last_game_time = GrabCurrentTime();
-        m_paused = false;
-    }
-
+    virtual void Start() = 0;
+    virtual void StartGameTime() = 0;
+    virtual void GetTimeDiffMS(float &comp_diff, float &game_diff) = 0;
     void PauseGameTime() { m_paused = true; }
 
-    void GetTimeDiffMS(float &comp_diff, float &game_diff) {
-        timespec current;
-        double cur_time;
-        while (true) {
-            clock_gettime(CLOCK_MONOTONIC, &current);
-            cur_time = GrabCurrentTime();
-            comp_diff = static_cast<float>(cur_time - m_last_comp_time);
-            if (comp_diff < 1.0f) {
-                continue;
-            }
-            m_last_comp_time = cur_time;
-            if (!m_paused) {
-                game_diff = static_cast<float>(cur_time - m_last_game_time);
-                m_last_game_time = cur_time;
-            }
-            break;
-        }
-    }
+protected:
+    bool m_paused;
+
 };

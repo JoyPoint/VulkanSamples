@@ -102,34 +102,41 @@ static void handle_xcb_event(GravityXcbWindow *window, const xcb_generic_event_t
         const xcb_key_release_event_t *key =
             (const xcb_key_release_event_t *)event;
         GravityEvent event(GravityEvent::GRAVITY_EVENT_KEY_PRESS);
+        bool add_key = false;
 
         switch (key->detail) {
         case 0x9: // Escape
             event.data.key = KEYNAME_ESCAPE;
+            add_key = true;
             break;
         case 0x71: // left arrow key
             event.data.key = KEYNAME_ARROW_LEFT;
+            add_key = true;
             break;
         case 0x72: // right arrow key
             event.data.key = KEYNAME_ARROW_RIGHT;
+            add_key = true;
             break;
         case 0x41: // space bar
             event.data.key = KEYNAME_SPACE;
             window->TogglePause();
+            add_key = true;
             break;
         default:
             {
-            std::string message = "Key hit - ";
-            message += std::to_string(key->detail);
-            logger.LogWarning(message);
-            break;
+                std::string message = "Key hit - ";
+                message += std::to_string(key->detail);
+                logger.LogWarning(message);
+                break;
             }
         }
-        if (event_list.SpaceAvailable()) {
-            event_list.InsertEvent(event);
-        } else {
-            logger.LogError("GravityXcbWindow::handle_xcb_event No space in event "
-                            "list to add key press");
+        if (add_key) {
+            if (event_list.SpaceAvailable()) {
+                event_list.InsertEvent(event);
+            } else {
+                logger.LogError("GravityXcbWindow::handle_xcb_event No space in event "
+                    "list to add key press");
+            }
         }
         break;
     }

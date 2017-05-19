@@ -95,14 +95,16 @@ generate_gravity_spv(simple_single_tex.vert simple_single_tex-vs.spv)
 generate_gravity_spv(simple_single_tex.frag simple_single_tex-fs.spv)
 
 if(WIN32)
-	set(GRAVITY_WINDOW_SRCS
+	set(GRAVITY_OS_SOURCES
+      utils/gravityclockwin32.hpp
 	    window/gravitywin32window.cpp
 	    window/gravitywin32window.hpp
 	    window/gravitywindow.cpp
 	    window/gravitywindow.hpp
 	)
 else()
-	set(GRAVITY_WINDOW_SRCS
+	set(GRAVITY_OS_SOURCES
+      utils/gravityclocklinux.hpp
 	    window/gravityxcbwindow.cpp
 	    window/gravityxcbwindow.hpp
 	    window/gravitywaylandwindow.cpp
@@ -119,7 +121,8 @@ add_executable(LunarGravity
                 utils/gravitylogger.hpp
                 utils/gravityevent.cpp
                 utils/gravityevent.hpp
-                ${GRAVITY_WINDOW_SRCS}
+                utils/gravityclock.hpp
+                ${GRAVITY_OS_SOURCES}
                 gravitygfxengine.cpp
                 gravitygfxengine.hpp
                 gravityvulkanengine.cpp

@@ -218,7 +218,7 @@ GravityVulkanEngine::~GravityVulkanEngine() {
         m_vk_inst_dispatch_table.DestroyDebugReportCallbackEXT(m_vk_inst, m_dbg_report_callback, nullptr);
     }
 
-    for (uint iii = 0; iii < m_primary_cmd_buffers.size(); ++iii) {
+    for (uint32_t iii = 0; iii < m_primary_cmd_buffers.size(); ++iii) {
         if (m_primary_cmd_buffers[iii].recording) {
             vkEndCommandBuffer(m_primary_cmd_buffers[iii].vk_cmd_buf);
             vkFreeCommandBuffers(m_vk_device, m_vk_cmd_pool, 1, &m_primary_cmd_buffers[iii].vk_cmd_buf);

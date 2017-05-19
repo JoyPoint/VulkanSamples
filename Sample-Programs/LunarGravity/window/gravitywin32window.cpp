@@ -22,6 +22,7 @@
 
 #include "gravitywin32window.hpp"
 #include "gravitylogger.hpp"
+#include "gravityevent.hpp"
 
 
 GravityWin32Window::GravityWin32Window(const char *win_name, const uint32_t width, const uint32_t height, bool fullscreen) :
@@ -33,16 +34,25 @@ GravityWin32Window::GravityWin32Window(const char *win_name, const uint32_t widt
 GravityWin32Window::~GravityWin32Window() {
 }
 
-LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     GravityLogger &logger = GravityLogger::getInstance();
-    switch (uMsg) {
+    GravityEventList &event_list = GravityEventList::getInstance();
+    GravityWin32Window *window = reinterpret_cast<GravityWin32Window*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+
+    switch (msg) {
     case WM_CLOSE:
+    {
         logger.LogInfo("GravityWin32Window::WndProc -Received close event");
-        PostQuitMessage(0);
+        GravityEvent event(GravityEvent::GRAVITY_EVENT_WINDOW_CLOSE);
+        if (event_list.SpaceAvailable()) {
+            event_list.InsertEvent(event);
+        }
+        else {
+            logger.LogError("GravityWin32Window::WndProc No space in event list to add key press");
+        }
+        window->TriggerQuit();
         break;
-    case WM_PAINT:
-        // TODO: Brainpain - Do we need to handle this?
-        break;
+    }
     case WM_GETMINMAXINFO:     // set window's minimum size
         // TODO: Brainpain - Do we need to handle this?
         //((MINMAXINFO*)lParam)->ptMinTrackSize = m_minsize;
@@ -58,10 +68,120 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         //    demo_resize(&demo);
         //}
         break;
-    default:
+    case WM_KEYDOWN: {
+        GravityEvent event(GravityEvent::GRAVITY_EVENT_KEY_PRESS);
+        bool add_key = false;
+        switch (wparam) {
+        case VK_ESCAPE:
+            event.data.key = KEYNAME_ESCAPE;
+            add_key = true;
+logger.LogWarning("Hit ESCAPE");
+            break;
+        case VK_LEFT:
+            event.data.key = KEYNAME_ARROW_LEFT;
+            add_key = true;
+logger.LogWarning("Hit LEFT");
+            break;
+        case VK_RIGHT:
+            event.data.key = KEYNAME_ARROW_RIGHT;
+            add_key = true;
+logger.LogWarning("Hit RIGHT");
+            break;
+        case VK_SPACE:
+            event.data.key = KEYNAME_SPACE;
+            window->TogglePause();
+            add_key = true;
+logger.LogWarning("Hit SPACE");
+            break;
+        default:
+logger.LogWarning("Unknown Key");
+            break;
+        }
+        if (add_key) {
+            if (event_list.SpaceAvailable()) {
+                event_list.InsertEvent(event);
+            } else {
+                logger.LogError("GravityXcbWindow::handle_xcb_event No space in event "
+                    "list to add key press");
+            }
+        }
         break;
     }
-    return (DefWindowProc(hWnd, uMsg, wParam, lParam));
+
+    default:
+        printf("%d\n", msg);
+        break;
+    }
+    return (DefWindowProc(hwnd, msg, wparam, lparam));
+}
+
+static void window_thread(GravityWin32Window *window) {
+    GravityLogger &logger = GravityLogger::getInstance();
+    GravityEventList &event_list = GravityEventList::getInstance();
+    MSG msg;
+    bool quit = false;
+
+    logger.LogInfo("window_thread starting window thread");
+    while (!quit) {
+#if 0 // Brainpain
+        BOOL bRet;
+        while ((bRet = GetMessage(&msg, window->GetHwnd(), 0, 0)) != 0)
+        {
+            if (bRet == -1)
+            {
+                // handle the error and possibly exit
+            }
+            else
+            {
+                if (msg.message == WM_CLOSE || msg.message == WM_QUIT) {
+                    logger.LogInfo("window_thread - Received close event");
+                    GravityEvent event(GravityEvent::GRAVITY_EVENT_WINDOW_CLOSE);
+                    if (event_list.SpaceAvailable()) {
+                        event_list.InsertEvent(event);
+                    }
+                    else {
+                        logger.LogError("window_thread No space in event list to add key press");
+                    }
+                    window->TriggerQuit();
+                    quit = true;
+                } else if (msg.message == WM_KEYDOWN) {
+                    logger.LogError("KEY DOWN!!");
+                }
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+        }
+#else
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+            switch (msg.message) {
+                case WM_CLOSE:
+                case WM_QUIT:
+                {
+                    logger.LogInfo("window_thread - Received close event");
+                    GravityEvent event(GravityEvent::GRAVITY_EVENT_WINDOW_CLOSE);
+                    if (event_list.SpaceAvailable()) {
+                        event_list.InsertEvent(event);
+                    }
+                    else {
+                        logger.LogError("window_thread No space in event list to add key press");
+                    }
+                    window->TriggerQuit();
+                    quit = true;
+                    break;
+                }
+                case WM_KEYDOWN: {
+                    logger.LogError("KEY DOWN!!");
+                    break;
+                }
+            }
+
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+#endif
+    }
+
+    logger.LogInfo("window_thread window thread finished");
 }
 
 bool GravityWin32Window::CreateGfxWindow(VkInstance &instance) {
@@ -133,6 +253,10 @@ bool GravityWin32Window::CreateGfxWindow(VkInstance &instance) {
         fflush(stdout);
         return false;
     }
+
+    SetForegroundWindow(m_window);
+    SetWindowLongPtr(m_window, GWLP_USERDATA, (LONG_PTR)this);
+
     // Window client area size must be at least 1 pixel high, to prevent crash.
     m_minsize.x = GetSystemMetrics(SM_CXMINTRACK);
     m_minsize.y = GetSystemMetrics(SM_CYMINTRACK) + 1;
@@ -145,10 +269,15 @@ bool GravityWin32Window::CreateGfxWindow(VkInstance &instance) {
     createInfo.hwnd = m_window;
     VkResult vk_result = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &m_vk_surface);
     if (VK_SUCCESS != vk_result) {
-        std::string error_msg = "GravityWin32Window::CreateGfxWindow - vkCreateWaylandSurfaceKHR failed "
+        std::string error_msg = "GravityWin32Window::CreateGfxWindow - vkCreateWin32SurfaceKHR failed "
                                 "with error ";
         error_msg += vk_result;
         logger.LogError(error_msg);
+        return false;
+    }
+    m_window_thread = new std::thread(window_thread, this);
+    if (NULL == m_window_thread) {
+        logger.LogError("GravityXcbWindow::CreateGfxWindow failed to create window thread");
         return false;
     }
 
@@ -156,12 +285,21 @@ bool GravityWin32Window::CreateGfxWindow(VkInstance &instance) {
 }
 
 bool GravityWin32Window::CloseGfxWindow() {
+    if (NULL != m_window_thread) {
+        m_window_thread->join();
+        delete m_window_thread;
+    }
+
     if (m_fullscreen) {
         ChangeDisplaySettings(nullptr, 0);
         ShowCursor(TRUE);
     }
+    DestroyWindow(m_window);
     return true;
 }
 
+void GravityWin32Window::TriggerQuit() {
+    PostQuitMessage(0);
+}
 
 #endif // VK_USE_PLATFORM_WIN32_KHR

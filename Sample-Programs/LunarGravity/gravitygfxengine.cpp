@@ -19,6 +19,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 #include "gravitylogger.hpp"
 #include "gravitygfxengine.hpp"
@@ -177,6 +178,12 @@ void GravityGraphicsEngine::Loop(void) {
     m_clock->Start();
     logger.LogInfo("GravityGraphicsEngine::Loop starting engine loop");
     while (!m_quit) {
+        float computer_time_diff = 0.0f;
+        float game_time_diff = 0.0f;
+        m_clock->GetTimeDiffMS(computer_time_diff, game_time_diff);
+        if (computer_time_diff < 10) {
+            continue;
+        }
         if (!ProcessEvents()) {
             logger.LogError("GravityGraphicsEngine::Loop failed to process events!");
         }

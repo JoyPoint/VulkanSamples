@@ -20,6 +20,8 @@
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 
+#include <thread>
+
 #include "gravitywindow.hpp"
 
 class GravityWin32Window : public GravityWindow {
@@ -38,12 +40,18 @@ class GravityWin32Window : public GravityWindow {
         virtual bool CreateGfxWindow(VkInstance &instance);
         virtual bool CloseGfxWindow();
 
-    protected:
- 
+        virtual void TriggerQuit();
+
+        HWND GetHwnd() { return m_window; }
+        uint32_t Width() { return m_width; }
+        uint32_t Height() { return m_height; }
+
     private:
         HINSTANCE m_instance;
         HWND m_window;
         POINT m_minsize;
+
+        std::thread *m_window_thread;
 };
 
 #endif // VK_USE_PLATFORM_WIN32_KHR

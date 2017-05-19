@@ -26,14 +26,17 @@
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
     #include "gravityxcbwindow.hpp"
+    #include "gravityclocklinux.hpp"
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
     #include "gravitywaylandwindow.hpp"
+    #include "gravityclocklinux.hpp"
 #elif defined(VK_USE_PLATFORM_WIN32_KHR)
     #include "gravitywin32window.hpp"
+    #include "gravityclockwin32.hpp"
 #else
     #include "gravitywindow.hpp"
+    #include "gravityclock.hpp"
 #endif
-#include "gravityclock.hpp"
 #include "gravityvulkanengine.hpp"
 
 #define APPLICATION_NAME "Lunar Gravity Demo"
@@ -119,15 +122,17 @@ int main(int argc, char *argv[]) {
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
     GravityXcbWindow gravity_window(APPLICATION_NAME, win_width, win_height, fullscreen);
+    GravityClockLinux gravity_clock;
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
     GravityWaylandWindow gravity_window(APPLICATION_NAME, win_width, win_height, fullscreen);
+    GravityClockLinux gravity_clock;
 #elif defined(VK_USE_PLATFORM_WIN32_KHR)
     GravityWin32Window gravity_window(APPLICATION_NAME, win_width, win_height, fullscreen);
+    GravityClockWin32 gravity_clock;
 #else
 #error "Unsupported Window format!"
 #endif
 
-    GravityClock gravity_clock;
     GravityVulkanEngine engine(APPLICATION_NAME, APPLICATION_VERSION, validate, &gravity_clock, &gravity_window, num_backbuffers);
 
     if (!engine.SetupInitalGraphicsDevice()) {
