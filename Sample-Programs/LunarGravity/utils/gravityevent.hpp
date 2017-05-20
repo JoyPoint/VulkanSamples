@@ -116,6 +116,7 @@ public:
         GRAVITY_EVENT_WINDOW_RESIZE,
         GRAVITY_EVENT_WINDOW_CLOSE,
         GRAVITY_EVENT_KEY_PRESS,
+        GRAVITY_EVENT_KEY_RELEASE,
     };
 
     GravityEvent() { m_type = GRAVITY_EVENT_NONE; memset(&data, 0, sizeof(data)); }

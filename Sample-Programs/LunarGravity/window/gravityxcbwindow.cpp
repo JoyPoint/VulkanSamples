@@ -76,6 +76,7 @@ static void handle_xcb_event(GravityXcbWindow *window, const xcb_generic_event_t
     {
         GravityEvent event(GravityEvent::GRAVITY_EVENT_WINDOW_CLOSE);
         if (event_list.SpaceAvailable()) {
+            logger.LogInfo("GravityXcbWindow::handle_xcb_event - Inserting destroy event");
             event_list.InsertEvent(event);
         } else {
             logger.LogError("GravityXcbWindow::handle_xcb_event No space in event "
@@ -89,6 +90,7 @@ static void handle_xcb_event(GravityXcbWindow *window, const xcb_generic_event_t
             (*window->DeleteWindowAtom()).atom) {
             GravityEvent event(GravityEvent::GRAVITY_EVENT_WINDOW_CLOSE);
             if (event_list.SpaceAvailable()) {
+                logger.LogInfo("GravityXcbWindow::handle_xcb_event - Inserting close event");
                 event_list.InsertEvent(event);
             } else {
                 logger.LogError("GravityXcbWindow::handle_xcb_event No space in event "
@@ -98,10 +100,15 @@ static void handle_xcb_event(GravityXcbWindow *window, const xcb_generic_event_t
         }
         break;
 
-    case XCB_KEY_RELEASE: {
+    case XCB_KEY_PRESS: {
+        logger.LogInfo("handle_xcb_event Key Press event");
+        break;
+
+    case XCB_KEY_RELEASE:
+        logger.LogInfo("handle_xcb_event Key Release event");
         const xcb_key_release_event_t *key =
             (const xcb_key_release_event_t *)event;
-        GravityEvent event(GravityEvent::GRAVITY_EVENT_KEY_PRESS);
+        GravityEvent event(GravityEvent::GRAVITY_EVENT_KEY_RELEASE);
         bool add_key = false;
 
         switch (key->detail) {
@@ -132,6 +139,7 @@ static void handle_xcb_event(GravityXcbWindow *window, const xcb_generic_event_t
         }
         if (add_key) {
             if (event_list.SpaceAvailable()) {
+                logger.LogInfo("GravityXcbWindow::handle_xcb_event - Inserting key event");
                 event_list.InsertEvent(event);
             } else {
                 logger.LogError("GravityXcbWindow::handle_xcb_event No space in event "

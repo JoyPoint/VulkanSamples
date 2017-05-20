@@ -17,6 +17,9 @@
  */
 
 #include <iostream>
+#if 0 // Debug code to validate what the update time is
+#include <sstream>
+#endif
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -140,12 +143,16 @@ bool GravityGraphicsEngine::ProcessEvents(void) {
 
         switch (cur_event.Type()) {
             case GravityEvent::GRAVITY_EVENT_WINDOW_RESIZE:
+                logger.LogInfo("GravityGraphicsEngine::ProcessEvents Resize event");
                 break;
             case GravityEvent::GRAVITY_EVENT_WINDOW_CLOSE:
+                logger.LogInfo("GravityGraphicsEngine::ProcessEvents Close event");
                 m_quit = true;
                 m_window->TriggerQuit();
                 break;
             case GravityEvent::GRAVITY_EVENT_KEY_PRESS:
+            case GravityEvent::GRAVITY_EVENT_KEY_RELEASE:
+                logger.LogInfo("GravityGraphicsEngine::ProcessEvents Keypress event");
                 switch (cur_event.data.key) {
                     case KEYNAME_ESCAPE:
                         m_quit = true;
@@ -175,13 +182,30 @@ bool GravityGraphicsEngine::ProcessEvents(void) {
 
 void GravityGraphicsEngine::Loop(void) {
     GravityLogger &logger = GravityLogger::getInstance();
+    float last_update_computer_time_diff = 0.0f;
+    float last_update_game_time_diff = 0.0f;
+
     m_clock->Start();
     logger.LogInfo("GravityGraphicsEngine::Loop starting engine loop");
     while (!m_quit) {
         float computer_time_diff = 0.0f;
         float game_time_diff = 0.0f;
         m_clock->GetTimeDiffMS(computer_time_diff, game_time_diff);
-        if (computer_time_diff < 10) {
+        last_update_computer_time_diff += computer_time_diff;
+        last_update_game_time_diff += game_time_diff;
+#if 0 // Debug code to validate what the update time is
+        {
+            std::ostringstream ss(std::ostringstream::ate);
+            ss.str("Time update:  Cur comp diff ");
+            ss << computer_time_diff << ", Cur game diff "
+               << game_time_diff << ", total comp diff "
+               << last_update_computer_time_diff
+               << ", total game diff "
+               << last_update_game_time_diff;
+            logger.LogWarning(ss.str());
+        }
+#endif
+        if (last_update_computer_time_diff < 10) {
             continue;
         }
         if (!ProcessEvents()) {
@@ -195,6 +219,8 @@ void GravityGraphicsEngine::Loop(void) {
                 demo->quit = true;
 #endif
         }
+        last_update_computer_time_diff = 0;
+        last_update_game_time_diff = 0;
     }
     logger.LogInfo("GravityGraphicsEngine::Loop engine loop finished");
 }

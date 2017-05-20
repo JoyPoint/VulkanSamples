@@ -34,21 +34,22 @@ GravityWin32Window::GravityWin32Window(const char *win_name, const uint32_t widt
 GravityWin32Window::~GravityWin32Window() {
 }
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+LRESULT CALLBACK WindowCallbackProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     GravityLogger &logger = GravityLogger::getInstance();
     GravityEventList &event_list = GravityEventList::getInstance();
     GravityWin32Window *window = reinterpret_cast<GravityWin32Window*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
     switch (msg) {
+    case WM_DESTROY:
     case WM_CLOSE:
     {
-        logger.LogInfo("GravityWin32Window::WndProc -Received close event");
+        logger.LogInfo("GravityWin32Window::WindowCallbackProc -Received close event");
         GravityEvent event(GravityEvent::GRAVITY_EVENT_WINDOW_CLOSE);
         if (event_list.SpaceAvailable()) {
             event_list.InsertEvent(event);
         }
         else {
-            logger.LogError("GravityWin32Window::WndProc No space in event list to add key press");
+            logger.LogError("GravityWin32Window::WindowCallbackProc No space in event list to add key press");
         }
         window->TriggerQuit();
         break;
@@ -101,7 +102,7 @@ logger.LogWarning("Unknown Key");
             if (event_list.SpaceAvailable()) {
                 event_list.InsertEvent(event);
             } else {
-                logger.LogError("GravityXcbWindow::handle_xcb_event No space in event "
+                logger.LogError("GravityWin32Window::WindowCallbackProc No space in event "
                     "list to add key press");
             }
         }
@@ -193,7 +194,7 @@ bool GravityWin32Window::CreateGfxWindow(VkInstance &instance) {
 
     win_class_ex.cbSize = sizeof(WNDCLASSEX);
     win_class_ex.style = CS_HREDRAW | CS_VREDRAW;
-    win_class_ex.lpfnWndProc = WndProc;
+    win_class_ex.lpfnWndProc = WindowCallbackProc;
     win_class_ex.cbClsExtra = 0;
     win_class_ex.cbWndExtra = 0;
     win_class_ex.hInstance = m_instance;

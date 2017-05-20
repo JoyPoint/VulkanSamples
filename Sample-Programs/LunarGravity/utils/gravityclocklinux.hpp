@@ -64,7 +64,7 @@ private:
     double GrabCurrentTime(void) {
         timespec current;
         clock_gettime(CLOCK_MONOTONIC, &current);
-        return static_cast<double>(current.tv_sec) +
+        return (static_cast<double>(current.tv_sec) * 1000.0) +
             (static_cast<double>(current.tv_nsec) * 0.000001);
     }
 };
