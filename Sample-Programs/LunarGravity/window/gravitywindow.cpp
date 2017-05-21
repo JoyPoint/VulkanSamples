@@ -42,7 +42,7 @@ GravityWindow::GravityWindow(const char *win_name, const uint32_t width, const u
         size_t name_length = strlen(win_name);
         if (name_length < 99) {
             strncpy(m_win_name, win_name, name_length);
-            m_win_name[name_length + 1] = '\0';
+            m_win_name[name_length] = '\0';
         } else {
             strncpy(m_win_name, win_name, 99);
             m_win_name[99] = '\0';

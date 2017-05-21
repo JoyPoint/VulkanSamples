@@ -23,8 +23,8 @@
 #include "gravityclock.hpp"
 
 class GravityClockWin32 : public GravityClock {
-public:
-    GravityClockWin32() : GravityClock() { }
+   public:
+    GravityClockWin32() : GravityClock() {}
 
     virtual void Start() {
         QueryPerformanceFrequency(&m_frequency);
@@ -38,27 +38,24 @@ public:
 
     virtual void GetTimeDiffMS(float &comp_diff, float &game_diff) {
         LARGE_INTEGER current;
-        LARGE_INTEGER elapsed;
-        while (true) {
-            current = GrabCurrentTime();
-            elapsed.QuadPart = current.QuadPart - m_last_comp_time.QuadPart;
-            elapsed.QuadPart *= 1000000;
-            elapsed.QuadPart /= m_frequency.QuadPart;
-            m_last_comp_time = current;
-            comp_diff = (float)elapsed.QuadPart;
+        current = GrabCurrentTime();
 
-            if (!m_paused) {
-                elapsed.QuadPart = current.QuadPart - m_last_game_time.QuadPart;
-                elapsed.QuadPart *= 1000000;
-                elapsed.QuadPart /= m_frequency.QuadPart;
-                m_last_game_time = current;
-                game_diff = (float)elapsed.QuadPart;
-            }
+        LONGLONG llTimeDiff = current.QuadPart - m_last_comp_time.QuadPart;
+        m_last_comp_time.QuadPart = current.QuadPart;
+
+        // To get duration in milliseconds
+        comp_diff = (float)llTimeDiff * 1000.0f / (float)m_frequency.QuadPart;
+
+        if (!m_paused) {
+            llTimeDiff = current.QuadPart - m_last_game_time.QuadPart;
+            m_last_game_time.QuadPart = current.QuadPart;
+
+            // To get duration in milliseconds
+            comp_diff = (float)llTimeDiff * 1000.0f / (float)m_frequency.QuadPart;
         }
     }
-    
-private:
 
+   private:
     LARGE_INTEGER m_last_comp_time;
     LARGE_INTEGER m_last_game_time;
     LARGE_INTEGER m_frequency;

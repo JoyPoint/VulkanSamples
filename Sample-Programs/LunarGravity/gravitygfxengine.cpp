@@ -17,9 +17,6 @@
  */
 
 #include <iostream>
-#if 0 // Debug code to validate what the update time is
-#include <sstream>
-#endif
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -193,19 +190,8 @@ void GravityGraphicsEngine::Loop(void) {
         m_clock->GetTimeDiffMS(computer_time_diff, game_time_diff);
         last_update_computer_time_diff += computer_time_diff;
         last_update_game_time_diff += game_time_diff;
-#if 0 // Debug code to validate what the update time is
-        {
-            std::ostringstream ss(std::ostringstream::ate);
-            ss.str("Time update:  Cur comp diff ");
-            ss << computer_time_diff << ", Cur game diff "
-               << game_time_diff << ", total comp diff "
-               << last_update_computer_time_diff
-               << ", total game diff "
-               << last_update_game_time_diff;
-            logger.LogWarning(ss.str());
-        }
-#endif
         if (last_update_computer_time_diff < 10) {
+            Sleep(1);
             continue;
         }
         if (!ProcessEvents()) {

@@ -40,6 +40,8 @@ class GravityWindow {
         virtual bool CreateGfxWindow(VkInstance &instance) = 0;
         virtual bool CloseGfxWindow() { return false; }
 
+        void SetFullscreen(bool fullscreen) { m_fullscreen = fullscreen; }
+        bool IsFullscreen() { return m_fullscreen; }
         virtual void TriggerQuit() = 0;
 
         void TogglePause() { m_paused = !m_paused; }

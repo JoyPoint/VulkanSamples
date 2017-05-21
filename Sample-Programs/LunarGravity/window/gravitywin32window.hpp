@@ -25,33 +25,30 @@
 #include "gravitywindow.hpp"
 
 class GravityWin32Window : public GravityWindow {
-    public:
+   public:
+    // Create a protected constructor
+    GravityWin32Window(const char *win_name, const uint32_t width, const uint32_t height, bool fullscreen);
 
-        // Create a protected constructor
-        GravityWin32Window(const char *win_name, const uint32_t width, const uint32_t height, bool fullscreen);
+    // We don't want any copy constructors
+    GravityWin32Window(const GravityWin32Window &window) = delete;
+    GravityWin32Window &operator=(const GravityWin32Window &window) = delete;
 
-        // We don't want any copy constructors
-        GravityWin32Window(const GravityWin32Window &window) = delete;
-        GravityWin32Window &operator=(const GravityWin32Window &window) = delete;
+    // Make the destructor public
+    virtual ~GravityWin32Window();
 
-        // Make the destructor public
-        virtual ~GravityWin32Window();
+    virtual bool CreateGfxWindow(VkInstance &instance);
+    virtual bool CloseGfxWindow();
 
-        virtual bool CreateGfxWindow(VkInstance &instance);
-        virtual bool CloseGfxWindow();
+    virtual void TriggerQuit();
 
-        virtual void TriggerQuit();
+    HWND GetHwnd() { return m_window; }
 
-        HWND GetHwnd() { return m_window; }
-        uint32_t Width() { return m_width; }
-        uint32_t Height() { return m_height; }
+   private:
+    HINSTANCE m_instance;
+    HWND m_window;
+    POINT m_minsize;
 
-    private:
-        HINSTANCE m_instance;
-        HWND m_window;
-        POINT m_minsize;
-
-        std::thread *m_window_thread;
+    std::thread *m_window_thread;
 };
 
-#endif // VK_USE_PLATFORM_WIN32_KHR
+#endif  // VK_USE_PLATFORM_WIN32_KHR

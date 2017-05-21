@@ -25,17 +25,17 @@
 #include "gravityevent.hpp"
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
-    #include "gravityxcbwindow.hpp"
-    #include "gravityclocklinux.hpp"
+#include "gravityxcbwindow.hpp"
+#include "gravityclocklinux.hpp"
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    #include "gravitywaylandwindow.hpp"
-    #include "gravityclocklinux.hpp"
+#include "gravitywaylandwindow.hpp"
+#include "gravityclocklinux.hpp"
 #elif defined(VK_USE_PLATFORM_WIN32_KHR)
-    #include "gravitywin32window.hpp"
-    #include "gravityclockwin32.hpp"
+#include "gravitywin32window.hpp"
+#include "gravityclockwin32.hpp"
 #else
-    #include "gravitywindow.hpp"
-    #include "gravityclock.hpp"
+#include "gravitywindow.hpp"
+#include "gravityclock.hpp"
 #endif
 #include "gravityvulkanengine.hpp"
 
